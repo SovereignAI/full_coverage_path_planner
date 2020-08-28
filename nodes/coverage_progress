@@ -1,5 +1,9 @@
 #! /usr/bin/env python
 
+from __future__ import division
+from builtins import range
+from builtins import object
+from past.utils import old_div
 import rospy
 import tf
 from nav_msgs.msg import OccupancyGrid
@@ -77,20 +81,20 @@ class CoverageProgressNode(object):
         self.coverage_frame = rospy.get_param("~coverage_frame", "base_link")
 
         self.coverage_radius_meters += 2 * self.coverage_resolution  # Compensate for discretization
-        self.coverage_radius_cells = int((self.coverage_radius_meters) / self.coverage_resolution)
+        self.coverage_radius_cells = int(old_div((self.coverage_radius_meters), self.coverage_resolution))
 
         grid = OccupancyGrid()
         grid.info.resolution = self.coverage_resolution
 
-        grid.info.width = abs(int(self._coverage_area[X] / self.coverage_resolution))
-        grid.info.height = abs(int(self._coverage_area[Y] / self.coverage_resolution))
+        grid.info.width = abs(int(old_div(self._coverage_area[X], self.coverage_resolution)))
+        grid.info.height = abs(int(old_div(self._coverage_area[Y], self.coverage_resolution)))
 
         grid.info.origin.position.x = 0 if self._coverage_area[X] > 0 else self._coverage_area[X]
         grid.info.origin.position.y = 0 if self._coverage_area[Y] > 0 else self._coverage_area[Y]
         grid.info.origin.orientation.w = 1
 
         # Initialize OccupancyGrid to have all cells DIRTY
-        grid.data = self.DIRTY * ones(grid.info.width * grid.info.height)
+        grid.data = self.DIRTY * ones(grid.info.width * grid.info.height, dtype=int)
 
         return grid
 
@@ -103,8 +107,8 @@ class CoverageProgressNode(object):
             return
 
         # Element of matrix corresponding to middle of coverage surface
-        x_point = int((coveragepos[X] - self.grid.info.origin.position.x) / self.coverage_resolution)
-        y_point = int((coveragepos[Y] - self.grid.info.origin.position.y) / self.coverage_resolution)
+        x_point = int(old_div((coveragepos[X] - self.grid.info.origin.position.x), self.coverage_resolution))
+        y_point = int(old_div((coveragepos[Y] - self.grid.info.origin.position.y), self.coverage_resolution))
 
         # Initialize message
         self.grid.header = Header()
@@ -121,8 +125,8 @@ class CoverageProgressNode(object):
 
                 cell_in_coverage_circle = x_index ** 2 + y_index ** 2 < self.coverage_radius_cells ** 2
 
-                cell_in_grid = 0 <= x_point + x_index < abs(int(self._coverage_area[X] / self.coverage_resolution)) \
-                               and 0 <= y_point + y_index < abs(int(self._coverage_area[Y] / self.coverage_resolution))
+                cell_in_grid = 0 <= x_point + x_index < abs(int(old_div(self._coverage_area[X], self.coverage_resolution))) \
+                               and 0 <= y_point + y_index < abs(int(old_div(self._coverage_area[Y], self.coverage_resolution)))
 
                 if cell_in_coverage_circle and cell_in_grid:
                     self.grid.data[array_index] = max(0, self.grid.data[array_index] - self.coverage_effectivity)
